@@ -1,6 +1,6 @@
 # Checkmk Client Monitoring Agent Script Suite
 
-Proyek ini bertujuan untuk membangun sistem monitoring aset perusahaan menggunakan **Checkmk** secara terpusat, otomatis, dan seragam. Semua berkas konfigurasi, skrip instalasi (*installer*), dan skrip pemantauan (*local checks*) dikelola secara terpusat melalui repositori GitHub resmi: **`itlicensehq25/checkmk-cabang`**.
+Proyek ini bertujuan untuk membangun sistem monitoring aset perusahaan menggunakan **Checkmk** secara terpusat, otomatis, dan seragam. Semua berkas konfigurasi, skrip instalasi (*installer*), dan skrip pemantauan (*local checks*) dikelola secara terpusat melalui repositori GitHub resmi: **`ITHQEJBNT`**.
 
 ---
 
