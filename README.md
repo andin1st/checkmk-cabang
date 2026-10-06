@@ -7,10 +7,17 @@ Proyek ini bertujuan untuk membangun sistem monitoring aset perusahaan menggunak
 ## 📂 Struktur Repositori GitHub (`itlicensehq25/checkmk-cabang`)
 
 ```text
-andin1st/scriptcmk/
+itlincensehq25/checkmk-cabang/
 ├── .gitignore
 ├── README.md
 ├── docker-compose-checkmk.yml
+├── .github/workflows/
+│   └── build-cmkagent.yml          # unknown function
+├── android/
+│   ├── app/                        # Much more subfolder here
+    ├── build.grandle               # Unknown
+    ├── grandle.properties          # Unknown
+│   └── setting.grandle             # Unknown
 ├── linux/
 │   ├── install.sh                  # Skrip Bootstrap Installer Linux Client (Multi-Distro)
 │   ├── install_server_stack.sh     # Auto-Installer Server Stack (Docker Engine, Dockge, Checkmk Community)
@@ -25,21 +32,23 @@ andin1st/scriptcmk/
 │       ├── ram_usage.sh            # Penggunaan RAM Fisik Real-time (Used, Free, Total)
 │       ├── remote_apps.sh          # Deteksi ID AnyDesk & RustDesk
 │       └── storage_usage.sh        # Penggunaan Kapasitas Partisi Penyimpanan Fisik
-└── windows/
-    ├── install.ps1                 # Skrip Bootstrap Installer Windows Client (Mode Interaktif & CLI)
-    └── local_checks/               # 10 Skrip Local Checks Windows
-        ├── battery_health.ps1      # Deteksi Baterai Laptop vs PC Desktop
-        ├── cpu_info.ps1            # Metrik CPU & Suhu Windows
-        ├── disk_nvme_health.ps1    # Kesehatan NVMe, SSD, & HDD Windows
-        ├── fan_health.ps1          # Pemantau Kipas Windows (Win32_Fan / CIM)
-        ├── info_network.ps1        # Statistik Jaringan Windows (IP & Throughput)
-        ├── info_OS_office.ps1      # Detail OS Windows & Deteksi MS Office / Onlyoffice
-        ├── ram_health.ps1          # Uji RAM Asinkron Windows (20% Free RAM)
-        ├── ram_usage.ps1           # Penggunaan RAM Fisik Windows
-        ├── remote_apps.ps1         # Deteksi ID AnyDesk & RustDesk (--get-id)
-        └── storage_usage.ps1       # Penggunaan Kapasitas Storage Windows
+├── windows/
+│   ├── install.ps1                 # Skrip Bootstrap Installer Windows Client (Mode Interaktif & CLI)
+│   └── local_checks/               # 10 Skrip Local Checks Windows
+│       ├── battery_health.ps1      # Deteksi Baterai Laptop vs PC Desktop
+│       ├── cpu_info.ps1            # Metrik CPU & Suhu Windows
+│       ├── disk_nvme_health.ps1    # Kesehatan NVMe, SSD, & HDD Windows
+│       ├── fan_health.ps1          # Pemantau Kipas Windows (Win32_Fan / CIM)
+│       ├── info_network.ps1        # Statistik Jaringan Windows (IP & Throughput)
+│       ├── info_OS_office.ps1      # Detail OS Windows & Deteksi MS Office / Onlyoffice
+│       ├── ram_health.ps1          # Uji RAM Asinkron Windows (20% Free RAM)
+│       ├── ram_usage.ps1           # Penggunaan RAM Fisik Windows
+│       ├── remote_apps.ps1         # Deteksi ID AnyDesk & RustDesk (--get-id)
+│       └── storage_usage.ps1       # Penggunaan Kapasitas Storage Windows
+├── server-test/
+    ├── README.md                   # Unknow funtion
+    └── receiver.py                 # Unknow fitur
 ```
-
 ---
 
 ## 🚀 Panduan Deployment Cepat (One-Liner Bootstrap)
@@ -48,7 +57,7 @@ andin1st/scriptcmk/
 
 Jalankan perintah satu baris ini pada terminal server Linux (Ubuntu/Debian/RHEL/Fedora) dengan hak akses **root / sudo**:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/andin1st/scriptcmk/main/linux/install_server_stack.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/itlicensehq25/checkmk-cabang/main/linux/install_server_stack.sh | sudo bash
 ```
 > **Info Akses Dashboard Server**:
 > * **Dockge Manager**: `http://<IP_SERVER>:5001`
@@ -61,16 +70,16 @@ curl -fsSL https://raw.githubusercontent.com/andin1st/scriptcmk/main/linux/insta
 
 #### **A. Mode Interaktif**:
 ```bash
-curl -sSfgL https://raw.githubusercontent.com/andin1st/scriptcmk/main/linux/install.sh | sudo bash
+curl -sSfgL https://raw.githubusercontent.com/itlincensehq25/checkmk-cabang/main/linux/install.sh | sudo bash
 ```
 
 #### **B. Mode Instan / Silent (Deployment Massal)**:
 ```bash
-curl -sSfgL https://raw.githubusercontent.com/andin1st/scriptcmk/main/linux/install.sh | sudo bash -s -- \
+curl -sSfgL https://raw.githubusercontent.com/itlincensehq25/checkmk-cabang/main/linux/install.sh | sudo bash -s -- \
   -s 192.168.1.100:8080 \
   -d cmk \
   -v 2.5.0p14-1 \
-  -g andin1st/scriptcmk
+  -g itlincensehq25/checkmk-cabang
 ```
 
 ---
@@ -81,12 +90,12 @@ Jalankan perintah berikut melalui **PowerShell (Administrator)**:
 
 #### **A. Mode Interaktif (3 Inputan Ringkas)**:
 ```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/andin1st/scriptcmk/main/windows/install.ps1'))
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/itlincensehq25/checkmk-cabang/main/windows/install.ps1'))
 ```
 
 #### **B. Mode Non-Interaktif / Fast CLI**:
 ```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex "& { $(New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/andin1st/scriptcmk/main/windows/install.ps1') } -s 192.168.1.100:8080 -d cmk -v 2.5.0p14-1"
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex "& { $(New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/itlincensehq25/checkmk-cabang/main/windows/install.ps1') } -s 192.168.1.100:8080 -d cmk -v 2.5.0p14-1"
 ```
 
 ---
