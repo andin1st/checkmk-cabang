@@ -14,7 +14,7 @@ fi
 SERVER_IP=""
 SITE_ID="cmk"
 AGENT_VERSION="2.5.0p14-1"
-GITHUB_REPO="andin1st/scriptcmk"
+GITHUB_REPO="itlicensehq25/checkmk-cabang"
 GITHUB_BRANCH="main"
 
 # Help message
