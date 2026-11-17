@@ -54,7 +54,7 @@ foreach ($dir in $requiredDirs) {
 
 # 3. Penanganan Parameter Server, Site ID, & Version (Interactive Prompt jika Server Kosong)
 if ([string]::IsNullOrWhitespace($Server)) {
-    $Server = Read-Host "Masukkan IP Server Checkmk Cabang (contoh: 192.168.1.100 atau 192.168.1.100:8081)"
+    $Server = Read-Host "Masukkan IP Server & Port Checkmk Cabang (contoh: 192.168.43.188:8080)"
     
     $inputSite = Read-Host "Masukkan Site ID Checkmk [Default: $Site]"
     if (-not [string]::IsNullOrWhitespace($inputSite)) {
@@ -67,9 +67,9 @@ if ([string]::IsNullOrWhitespace($Server)) {
     }
 }
 
-# Pastikan parameter yang dimasukkan bersih dari spasi
-$Server  = $Server.Trim()
-$Site    = $Site.Trim()
+# Pastikan parameter yang dimasukkan bersih dari skema http(s):// dan spasi
+$Server  = ($Server -replace '^https?://', '').Trim().TrimEnd('/')
+$Site    = $Site.Trim().Trim('/')
 $Version = $Version.Trim()
 
 # Ekstrak IP murni untuk konfigurasi Windows Firewall
@@ -118,11 +118,17 @@ if (-not $cmkService) {
     # Buat varian versi tanpa release suffix (misal: '2.5.0p14-1' -> '2.5.0p14')
     $cleanVersion = $Version -replace '-.*$', ''
     
-    # Daftar kandidat URL unduhan MSI (Spesifik versi, Tanpa release suffix, Generik Checkmk, & HTTPS)
+    # Daftar kandidat URL unduhan MSI (Mendukung subfolder /windows/, versi spesifik, & HTTPS)
     $msiCandidates = @(
+        "http://$Server/$Site/check_mk/agents/windows/check_mk_agent.msi",
+        "http://$Server/$Site/check_mk/agents/windows/check-mk-agent-$Version.msi",
+        "http://$Server/$Site/check_mk/agents/windows/check-mk-agent-$cleanVersion.msi",
         "http://$Server/$Site/check_mk/agents/check-mk-agent-$Version.msi",
         "http://$Server/$Site/check_mk/agents/check-mk-agent-$cleanVersion.msi",
         "http://$Server/$Site/check_mk/agents/check_mk_agent.msi",
+        "https://$Server/$Site/check_mk/agents/windows/check_mk_agent.msi",
+        "https://$Server/$Site/check_mk/agents/windows/check-mk-agent-$Version.msi",
+        "https://$Server/$Site/check_mk/agents/windows/check-mk-agent-$cleanVersion.msi",
         "https://$Server/$Site/check_mk/agents/check-mk-agent-$Version.msi",
         "https://$Server/$Site/check_mk/agents/check-mk-agent-$cleanVersion.msi",
         "https://$Server/$Site/check_mk/agents/check_mk_agent.msi"
