@@ -27,12 +27,17 @@ param (
     [string]$Branch = "main"
 )
 
-# 1. Validasi Hak Akses Administrator
+# 1. Validasi Hak Akses Administrator & Set Execution Policy
 $currentPrincipal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Error "Harap jalankan PowerShell sebagai Administrator!"
     exit 1
 }
+
+# Atur ExecutionPolicy sistem agar local checks .ps1 dapat dijalankan oleh Service Checkmk Agent
+try {
+    Set-ExecutionPolicy RemoteSigned -Scope LocalMachine -Force -ErrorAction SilentlyContinue
+} catch {}
 
 Write-Host "====================================================================" -ForegroundColor Green
 Write-Host " Memulai Instalasi Checkmk Agent Windows & Integration CrystalDiskInfo " -ForegroundColor Green
@@ -260,12 +265,23 @@ if (-not $cdiExe) {
 
 if ($cdiExe) {
     $cdiDir = Split-Path $cdiExe -Parent
-    Start-Process -FilePath $cdiExe -ArgumentList "/CopyExit" -Wait -WindowStyle Hidden
     
-    # Salin log hasil pembacaan DiskInfo.txt ke lokasi yang dibaca disk_nvme_health.ps1
-    $srcLog = Join-Path $cdiDir "DiskInfo.txt"
-    if (Test-Path $srcLog) {
-        Copy-Item -Path $srcLog -Destination "$customLogDir\diskinfo.txt" -Force
+    # Jalankan DiskInfo64.exe dengan WorkingDirectory agar file DiskInfo.txt konsisten terbuat
+    Start-Process -FilePath $cdiExe -ArgumentList "/CopyExit" -WorkingDirectory $cdiDir -Wait -WindowStyle Hidden
+    Start-Sleep -Seconds 2
+    
+    # Cari berkas DiskInfo.txt di beberapa lokasi potensial keluaran CrystalDiskInfo
+    $candidateLogs = @(
+        (Join-Path $cdiDir "DiskInfo.txt"),
+        "DiskInfo.txt",
+        "C:\Windows\System32\DiskInfo.txt",
+        "$env:TEMP\DiskInfo.txt",
+        "C:\ProgramData\checkmk\agent\DiskInfo.txt"
+    )
+    
+    $foundLog = $candidateLogs | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($foundLog) {
+        Copy-Item -Path $foundLog -Destination "$customLogDir\diskinfo.txt" -Force
     }
 }
 '@
