@@ -105,18 +105,71 @@ if (-not $cmkService) {
 
 if (-not $cmkService) {
     Write-Host " Agen Checkmk belum terpasang. Mengunduh paket MSI dari server cabang..." -ForegroundColor Yellow
-    $msiUrl = "http://$Server/$Site/check_mk/agents/check-mk-agent.msi"
-    $msiPath = "$env:TEMP\check-mk-agent-$Version.msi"
     
+    # Bypass SSL validation untuk self-signed certificate & atur protokol TLS
     try {
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-        Invoke-WebRequest -Uri $msiUrl -OutFile $msiPath -UseBasicParsing
-        Write-Host " Menginstal MSI Agent Checkmk..." -ForegroundColor Yellow
-        Start-Process msiexec.exe -ArgumentList "/i `"$msiPath`" /qn /norestart" -Wait
-        Remove-Item $msiPath -Force -ErrorAction SilentlyContinue
-        Write-Host " MSI Agent Checkmk berhasil diinstal." -ForegroundColor Green
-    } catch {
-        Write-Warning " Gagal mengunduh/menginstal MSI dari server ($msiUrl). Melanjutkan ke tahap berikutnya..."
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12 -bor [System.Net.SecurityProtocolType]::Tls11 -bor [System.Net.SecurityProtocolType]::Tls
+    } catch {}
+    
+    $msiPath = "$env:TEMP\check-mk-agent-installer.msi"
+    if (Test-Path $msiPath) { Remove-Item $msiPath -Force -ErrorAction SilentlyContinue }
+    
+    # Buat varian versi tanpa release suffix (misal: '2.5.0p14-1' -> '2.5.0p14')
+    $cleanVersion = $Version -replace '-.*$', ''
+    
+    # Daftar kandidat URL unduhan MSI (Spesifik versi, Tanpa release suffix, Generik Checkmk, & HTTPS)
+    $msiCandidates = @(
+        "http://$Server/$Site/check_mk/agents/check-mk-agent-$Version.msi",
+        "http://$Server/$Site/check_mk/agents/check-mk-agent-$cleanVersion.msi",
+        "http://$Server/$Site/check_mk/agents/check_mk_agent.msi",
+        "https://$Server/$Site/check_mk/agents/check-mk-agent-$Version.msi",
+        "https://$Server/$Site/check_mk/agents/check-mk-agent-$cleanVersion.msi",
+        "https://$Server/$Site/check_mk/agents/check_mk_agent.msi"
+    )
+    
+    $msiDownloaded = $false
+    $successfulUrl = ""
+    
+    foreach ($url in $msiCandidates) {
+        try {
+            Write-Host "  [-] Mencoba unduh dari: $url ..." -ForegroundColor Gray
+            Invoke-WebRequest -Uri $url -OutFile $msiPath -UseBasicParsing -TimeoutSec 15 -ErrorAction Stop
+            
+            # Validasi file terunduh dan ukuran file > 500 KB (memastikan paket installer valid, bukan HTML error 404/500)
+            if ((Test-Path $msiPath) -and ((Get-Item $msiPath).Length -gt 500000)) {
+                $msiDownloaded = $true
+                $successfulUrl = $url
+                Write-Host "  [+] Berhasil mengunduh paket MSI dari: $url" -ForegroundColor Green
+                break
+            } else {
+                if (Test-Path $msiPath) { Remove-Item $msiPath -Force -ErrorAction SilentlyContinue }
+            }
+        } catch {
+            Write-Host "      (Kandidat tidak dapat dijangkau: $($_.Exception.Message))" -ForegroundColor DarkGray
+        }
+    }
+    
+    if ($msiDownloaded) {
+        try {
+            Write-Host " Menginstal MSI Agent Checkmk..." -ForegroundColor Yellow
+            $proc = Start-Process msiexec.exe -ArgumentList "/i `"$msiPath`" /qn /norestart" -Wait -PassThru
+            if ($proc.ExitCode -eq 0 -or $proc.ExitCode -eq 3010) {
+                Write-Host " MSI Agent Checkmk berhasil diinstal." -ForegroundColor Green
+            } else {
+                Write-Warning " Instalasi msiexec selesai dengan exit code: $($proc.ExitCode)"
+            }
+            Remove-Item $msiPath -Force -ErrorAction SilentlyContinue
+        } catch {
+            Write-Warning " Gagal menjalankan msiexec: $_"
+        }
+    } else {
+        Write-Warning " Gagal mengunduh paket MSI dari seluruh kandidat URL server ($Server)."
+        Write-Warning " Petunjuk Diagnosa Pembacaan Server:"
+        Write-Warning "  1. Pastikan IP dan Port Server sudah sesuai (contoh: 192.168.43.188 atau 192.168.43.188:8080)."
+        Write-Warning "  2. Pastikan Site ID '$Site' dan versi agent '$Version' terdaftar di server."
+        Write-Warning "  3. Jika installer MSI dipasang secara manual, jalankan kembali skrip ini untuk mengonfigurasi local checks & scheduler."
+        Write-Warning " Melanjutkan ke tahap berikutnya..."
     }
 } else {
     Write-Host " Agen Checkmk sudah terpasang di sistem." -ForegroundColor Green
