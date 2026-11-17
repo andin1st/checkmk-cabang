@@ -105,7 +105,7 @@ if (-not $cmkService) {
 
 if (-not $cmkService) {
     Write-Host " Agen Checkmk belum terpasang. Mengunduh paket MSI dari server cabang..." -ForegroundColor Yellow
-    $msiUrl = "http://$Server/$Site/check_mk/agents/check-mk-agent-$Version.msi"
+    $msiUrl = "http://$Server/$Site/check_mk/agents/check-mk-agent.msi"
     $msiPath = "$env:TEMP\check-mk-agent-$Version.msi"
     
     try {
