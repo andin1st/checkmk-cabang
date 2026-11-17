@@ -174,30 +174,51 @@ try {
 # 7. INTEGRASI SETUP CRYSTALDISKINFO (Support Disk Format RST/OEM)
 Write-Host "`n[4/7] Mengintegrasikan CrystalDiskInfo untuk Disk Format RST/OEM..." -ForegroundColor Cyan
 
-# A. Deteksi Lokasi Eksekusi DiskInfo64.exe
-$cdiExePath = "C:\ProgramFiles\CrystalDiskInfo\DiskInfo64.exe"
-$cdiApp = Get-Command "DiskInfo64.exe" -ErrorAction SilentlyContinue
+# A. Membuat skrip helper setup_crystaldiskinfo.ps1 di direktori agent
+$setupCdiPath = "$agentDir\setup_crystaldiskinfo.ps1"
+$setupCdiContent = @'
+# Skrip otomatisasi pembacaan SMART CrystalDiskInfo
+$customLogDir = "C:\ProgramData\checkmk\agent\log_custom"
+if (-not (Test-Path $customLogDir)) {
+    New-Item -Path $customLogDir -ItemType Directory -Force | Out-Null
+}
 
-if ($cdiApp) {
-    $cdiExePath = $cdiApp.Path
-} elseif (-not (Test-Path $cdiExePath)) {
-    Write-Host " CrystalDiskInfo tidak terdeteksi. Menginstal via winget..." -ForegroundColor Yellow
+$cdiPaths = @(
+    "C:\Program Files\CrystalDiskInfo\DiskInfo64.exe",
+    "C:\Program Files (x86)\CrystalDiskInfo\DiskInfo64.exe"
+)
+$cdiApp = Get-Command "DiskInfo64.exe" -ErrorAction SilentlyContinue
+if ($cdiApp) { $cdiPaths = @($cdiApp.Path) + $cdiPaths }
+
+$cdiExe = $cdiPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if (-not $cdiExe) {
     try {
         winget install --id CrystalDewWorld.CrystalDiskInfo --exact --silent --accept-source-agreements --accept-package-agreements | Out-Null
-        Write-Host " Winget installasi CrystalDiskInfo selesai." -ForegroundColor Green
-    } catch {
-        Write-Warning " Gagal menginstal CrystalDiskInfo via winget. Pastikan winget tersedia atau install manual."
-    }
-} else {
-    Write-Host " CrystalDiskInfo sudah terdeteksi di: $cdiExePath" -ForegroundColor Green
+        $cdiExe = $cdiPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+    } catch {}
 }
+
+if ($cdiExe) {
+    $cdiDir = Split-Path $cdiExe -Parent
+    Start-Process -FilePath $cdiExe -ArgumentList "/CopyExit" -Wait -WindowStyle Hidden
+    
+    # Salin log hasil pembacaan DiskInfo.txt ke lokasi yang dibaca disk_nvme_health.ps1
+    $srcLog = Join-Path $cdiDir "DiskInfo.txt"
+    if (Test-Path $srcLog) {
+        Copy-Item -Path $srcLog -Destination "$customLogDir\diskinfo.txt" -Force
+    }
+}
+'@
+
+Set-Content -Path $setupCdiPath -Value $setupCdiContent -Encoding UTF8 -Force
+Write-Host " Skrip helper $setupCdiPath berhasil dibuat." -ForegroundColor Green
 
 # B. Pendaftaran Scheduled Task CrystalDiskInfo (Setiap 6 Jam)
 $cdiTaskName = "Checkmk_CrystalDiskInfo"
 Unregister-ScheduledTask -TaskName $cdiTaskName -Confirm:$false -ErrorAction SilentlyContinue
 
-$cdiCmd = "if (Test-Path '$cdiExePath') { Start-Process -FilePath '$cdiExePath' -ArgumentList '/CopyExit' -Wait -WindowStyle Hidden }"
-$cdiAction    = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command `"$cdiCmd`""
+$cdiAction    = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -File `"$setupCdiPath`""
 $cdiTrigger   = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 6)
 $cdiPrincipal = New-ScheduledTaskPrincipal -UserId "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
 
@@ -229,15 +250,15 @@ Write-Host " ScheduledTask '$updateTaskName' didaftarkan (Interval: 2 jam)." -Fo
 
 # 9. Eksekusi Pembacaan Awal CrystalDiskInfo
 Write-Host "`n[6/7] Menjalankan pembacaan awal SMART via CrystalDiskInfo..." -ForegroundColor Cyan
-if (Test-Path $cdiExePath) {
-    try {
-        Start-Process -FilePath $cdiExePath -ArgumentList "/CopyExit" -Wait -WindowStyle Hidden
+try {
+    & "$setupCdiPath"
+    if (Test-Path "$customLogDir\diskinfo.txt") {
         Write-Host " Pembacaan awal SMART selesai. Log tersimpan di $customLogDir\diskinfo.txt" -ForegroundColor Green
-    } catch {
-        Write-Warning " Gagal menjalankan pembacaan awal CrystalDiskInfo: $_"
+    } else {
+        Write-Warning " Eksekusi awal selesai tetapi $customLogDir\diskinfo.txt belum terbentuk. Pastikan CrystalDiskInfo terpasang."
     }
-} else {
-    Write-Warning " Path $cdiExePath belum tersedia untuk eksekusi awal."
+} catch {
+    Write-Warning " Gagal menjalankan pembacaan awal CrystalDiskInfo: $_"
 }
 
 # 10. Selesai
