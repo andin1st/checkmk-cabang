@@ -57,31 +57,6 @@ foreach ($dir in $requiredDirs) {
     }
 }
 
-# 2b. Konfigurasi check_mk.user.yml (Hanya Mengaktifkan Local Checks & Plugins, Menonaktifkan Matriks Bawaan)
-$userYmlPath = "$agentDir\check_mk.user.yml"
-$userYmlContent = @'
-global:
-  sections:
-    enabled:
-      - local
-      - plugins
-    disabled:
-      - services
-      - ps
-      - winperf_processor
-      - winperf_phydisk
-      - winperf_refclock
-      - df
-      - mem
-      - uptime
-      - logwatch
-      - fileinfo
-      - dotnet_clrmemory
-      - wmi_webservices
-'@
-Set-Content -Path $userYmlPath -Value $userYmlContent -Encoding UTF8 -Force
-Write-Host " Konfigurasi $userYmlPath berhasil diperbarui (Hanya Local Checks & Plugins)." -ForegroundColor Green
-
 # 3. Penanganan Parameter Server, Site ID, & Version (Interactive Prompt jika Server Kosong)
 if ([string]::IsNullOrWhitespace($Server)) {
     $Server = Read-Host "Masukkan IP Server & Port Checkmk Cabang (contoh: 192.168.43.188:8080)"
